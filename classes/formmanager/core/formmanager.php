@@ -22,6 +22,8 @@ abstract class FormManager_Core_FormManager
 
 	protected $container;
 
+	public $custom_view;
+
 	/*
 	 * Include these fields in the form
 	 */
@@ -45,6 +47,9 @@ abstract class FormManager_Core_FormManager
 		$this->submit_text = I18n::get('Save changes');
 
 		$form_name = preg_replace('/^form_/', '', strtolower(get_class($this)));
+
+		$this->custom_view = 'formmanager/' . $form_name;
+
 		if ($parent_container) {
 			$this->container = $parent_container . '[' . $form_name . ']';
 		} else {
@@ -213,9 +218,8 @@ abstract class FormManager_Core_FormManager
 	 * @return string
 	 **/
 	public function render() {
-		$bespoke_view = 'formmanager/' . strtolower(get_class($this));
-		if (Kohana::find_file('views', $bespoke_view)) {
-			$view = View::factory($bespoke_view);
+		if (Kohana::find_file('views', $this->custom_view)) {
+			$view = View::factory($this->custom_view);
 		} else {
 			$view = View::factory('formmanager/form');
 		}
