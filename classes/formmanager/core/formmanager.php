@@ -30,6 +30,12 @@ abstract class FormManager_Core_FormManager
 	
 	protected function setup() {}
 
+	/**
+	 * Constructor
+	 *
+	 * @param int $id Primary key of the model. Ignored unless $this->model is set. 
+	 * @return void
+	 **/
 	public function __construct($id = null) {
 		
 		$this->submit_text = I18n::get('Save changes');
@@ -72,7 +78,15 @@ abstract class FormManager_Core_FormManager
 		}
 		
 	}
-
+	
+	/**
+	 * Add a validation rule. These will be in addition to any defined in the model
+	 *
+	 * @param string $field The field name
+	 * @param string $rule The rule type
+	 * @param array The rule parameters
+	 * @return void
+	 **/
 	public function rule($field, $rule, array $params = null) {
 		$this->rules[] = array(
 			'field'  => $field,
@@ -80,7 +94,14 @@ abstract class FormManager_Core_FormManager
 			'params' => $params
 		);
 	}
-
+	
+	/**
+	 * Set the value of a field
+	 *
+	 * @param string $key The field name
+	 * @param mixed $value The field value
+	 * @return void
+	 **/
 	public function set_value($key, $value) {
 		if ($this->model && $key == $this->primary_key) {
 			$this->object = ORM::factory($this->model, $value);
@@ -97,6 +118,12 @@ abstract class FormManager_Core_FormManager
 		}
 	}
 	
+	/**
+	 * Set values all at once
+	 *
+	 * @param array $values key/value pairs
+	 * @return void
+	 **/
 	public function set_values($values) {
 		foreach ($this->fields as $key => $field) {
 			if (isset($values[$key])) {
@@ -104,7 +131,16 @@ abstract class FormManager_Core_FormManager
 			}
 		}
 	}
-
+	
+	/**
+	 * Add a field to the form
+	 *
+	 * @param string $name Name of the field
+	 * @param array $spec Field specification
+	 * @param string $position start/end/before/after
+	 * @param string $relative The field that $position is relative to (for before/after)
+	 * @return void
+	 **/
 	public function add_field($name, $spec = array(), $position = null, $relative = null) {
 		if (!isset($spec['name'])) $spec['name'] = $name;
 
@@ -125,12 +161,27 @@ abstract class FormManager_Core_FormManager
 		$this->fields = array_merge($before, array($name => $spec), $after);
 
 	}
-
+	
+	/**
+	 * Remove a field from the form
+	 *
+	 * @param string $name Field name
+	 * @return void
+	 **/
 	public function remove_field($name) {
 		if (isset($this->fields[$name])) {
 			unset($this->fields[$name]);
 		}
 	}
+	
+	/**
+	 * Move a field
+	 *
+	 * @param string $name Name of the field
+	 * @param string $position start/end/before/after
+	 * @param string $relative The field that $position is relative to (for before/after)
+	 * @return void
+	 **/
 	public function move_field($name, $position = null, $relative = null) {
 		if (isset($this->fields[$name])) {
 			$field = $this->fields[$name];
@@ -139,6 +190,11 @@ abstract class FormManager_Core_FormManager
 		}
 	}
 
+	/**
+	 * Render the form
+	 *
+	 * @return string
+	 **/
 	public function render() {
 		$bespoke_view = 'formmanager/' . strtolower(get_class($this));
 		if (Kohana::find_file('views', $bespoke_view)) {
@@ -150,7 +206,13 @@ abstract class FormManager_Core_FormManager
 		$view->form = $this;
 		return $view->render();
 	}
-
+	
+	/**
+	 * Validate the submitted values
+	 *
+	 * @param array $values Array of values
+	 * @return bool
+	 */
 	public function submit($values) {
 
 		// If we leave in a blank primary key, then ORM will not set it.
@@ -172,7 +234,7 @@ abstract class FormManager_Core_FormManager
 				}
 			}
 		}
-
+		
 		// Local validation - to figure out.
 		$local_validation = Validation::factory($values);
 		foreach ($this->rules as $rule) {
@@ -186,19 +248,32 @@ abstract class FormManager_Core_FormManager
 				$this->fields[$key]['error_text'] = $value;
 			}
 		}
-
-
+		
 		$this->submit_status = ($object_valid && $local_valid) ? self::SUBMIT_STATUS_SUCCESS : self::SUBMIT_STATUS_FAIL;
-
+		
 		// Return success or not. By default this is just if the form was valid.
 		// Saving is left up to the child form class.
 		return $object_valid && $local_valid;
 		
-
 	}
 
+	/**
+	 * Get the submit status
+	 *
+	 * @return bool
+	 */
 	public function submit_status() {
-		return $this->submit_status();
+		return $this->submit_status;
+	}
+
+	/**
+	 * Save the associated object, return the object on success
+	 * 
+	 * @return mixed
+	 */
+	public function save_object() {
+		if (!$this->object) return false;
+		return $this->object->save();
 	}
 
 
@@ -278,6 +353,15 @@ abstract class FormManager_Core_FormManager
 
 	}
 
+	/**
+	 * Set a value into the $field array, not overwriting a previous value by default.
+	 *
+	 * @param array $field
+	 * @param string $key
+	 * @param mixed $value
+	 * @param bool $override
+	 * @return type array
+	 */
 	protected function set_field_value($field, $key, $value, $override=false) {
 		if (!isset($field[$key]) or $override) $field[$key] = $value;
 		return $field;

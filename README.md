@@ -72,7 +72,7 @@ class Form_Profile extends FormManager {
 
 	public function submit($values) {
 
-		// Ensure current user has permissions to edlt
+		// Ensure current user has permissions to edit
 		$auth = Auth::instance();
 		$user = $auth->get_user();
 		if ($user->id != $this->object->id) {
@@ -92,4 +92,4 @@ class Form_Profile extends FormManager {
 }
 ```
 
-Note; the FormManager class does not automatically call ->save() on the object.
+Note; the FormManager class does not automatically call ->save() during ->submit().
