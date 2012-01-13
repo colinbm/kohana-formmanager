@@ -1,1 +1,1 @@
-<label for="<?php echo $field['name']; ?>"><?php echo $field['label']; ?></label>
+<label for="<?php echo $field['field_id']; ?>"><?php echo $field['label']; ?></label>

@@ -11,12 +11,16 @@ abstract class FormManager_Core_FormManager
 
 	public $method = 'post';
 	public $action = '';
+	protected $expected_input;
+
 	public $submit_text;
 
 	const SUBMIT_STATUS_FAIL = 'fail';
 	const SUBMIT_STATUS_SUCCESS = 'success';
 
 	protected $submit_status = null;
+
+	protected $container;
 
 	/*
 	 * Include these fields in the form
@@ -36,9 +40,16 @@ abstract class FormManager_Core_FormManager
 	 * @param int $id Primary key of the model. Ignored unless $this->model is set. 
 	 * @return void
 	 **/
-	public function __construct($id = null) {
+	public function __construct($id = null, $parent_container = null) {
 		
 		$this->submit_text = I18n::get('Save changes');
+
+		$form_name = preg_replace('/^form_/', '', strtolower(get_class($this)));
+		if ($parent_container) {
+			$this->container = $parent_container . '[' . $form_name . ']';
+		} else {
+			$this->container = $form_name;
+		}
 
 		if ($this->model) {
 
@@ -75,6 +86,12 @@ abstract class FormManager_Core_FormManager
 
 		foreach($this->fields as $key => $field) {
 			$this->fields[$key] = $this->configure_field($field);
+		}
+
+		if ($this->method == 'post') {
+			$this->expected_input = $_POST;
+		} elseif ($this->method == 'get') {
+			$this->expected_input = $_GET;
 		}
 		
 	}
@@ -213,7 +230,12 @@ abstract class FormManager_Core_FormManager
 	 * @param array $values Array of values
 	 * @return bool
 	 */
-	public function submit($values) {
+	public function submit() {
+		
+		$values = $this->get_input();
+		if (!$values) {
+			return false;
+		}
 
 		// If we leave in a blank primary key, then ORM will not set it.
 		if (isset($values[$this->primary_key]) && $values[$this->primary_key] == '') {
@@ -267,6 +289,27 @@ abstract class FormManager_Core_FormManager
 	}
 
 	/**
+	 * Check to see if this form is submitted
+	 *
+	 * @return bool
+	 */
+	public function is_submitted() {
+		return isset($this->expected_input[$this->container]);
+	}
+
+	/**
+	 * Return the submitted data, or false if not submitted
+	 *
+	 * @return mixed
+	 */
+	public function get_input() {
+		if ($this->is_submitted()) {
+			return $this->expected_input[$this->container];
+		}
+		return array();
+	}
+
+	/**
 	 * Save the associated object, return the object on success
 	 * 
 	 * @return mixed
@@ -286,13 +329,17 @@ abstract class FormManager_Core_FormManager
 	 */
 	protected function configure_field($field) {
 		if (!isset($field['name'])) $field['name'] = $field['column_name'];
+		if (!isset($field['field_name'])) $field['field_name'] = $this->container . '[' . $field['name'] . ']';
+		if (!isset($field['field_id'])) $field['field_id'] = trim(str_replace(array('[', ']'), '_', $field['field_name']), '_');
+
+
 		if (!isset($field['value'])) $field['value'] = '';
 
 		if (!isset($field['label']) || !$field['label']) $field['label'] = ucwords(str_replace('_', ' ', $field['name']));
 		$field = $this->set_field_value($field, 'error', false);
 		$field = $this->set_field_value($field, 'error_text','');
 
-		$field['attributes'] = array();
+		$field['attributes'] = array('id' => $field['field_id']);
 
 		if (isset($field['comment'])) {
 			$comment = explode("\n", $field['comment']);

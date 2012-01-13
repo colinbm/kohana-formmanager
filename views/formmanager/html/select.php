@@ -1,1 +1,1 @@
-<?php echo Form::select($field['name'], $field['options'], $field['value']); ?>
+<?php echo Form::select($field['field_name'], $field['options'], $field['value']); ?>

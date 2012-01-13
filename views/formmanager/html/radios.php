@@ -2,7 +2,7 @@
 <?php foreach ($field['options'] as $option): ?>
 	<li>
 		<label>
-			<?php echo Form::radio($field['name'], $option, array('checked' => (bool)($option == $field['value']))); ?>
+			<?php echo Form::radio($field['field_name'], $option, array('checked' => (bool)($option == $field['value']))); ?>
 			<span><?php echo $option; ?></span>
 		</label>
 	</li>

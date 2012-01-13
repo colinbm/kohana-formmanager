@@ -27,7 +27,13 @@ class Form_Login extends FormManager {
 		$this->add_field('password');
 	}
 	
-	public function submit($values) {
+	public function submit() {
+		if (!$this->is_submitted()) {
+			return false;
+		}
+		
+		$values = $this->get_input();
+
 		$auth = Auth::instance();
 		$success = $auth->login($values['username'], $values['password']);
 		if (!$success) {
@@ -70,7 +76,7 @@ class Form_Profile extends FormManager {
 
 	}
 
-	public function submit($values) {
+	public function submit() {
 
 		// Ensure current user has permissions to edit
 		$auth = Auth::instance();
@@ -79,10 +85,10 @@ class Form_Profile extends FormManager {
 			return false;
 		}
 
-		$success = parent::submit($values);
+		$success = parent::submit();
 
 		if ($success) {
-			$this->object->save();
+			$this->save();
 		}
 
 		return $success;

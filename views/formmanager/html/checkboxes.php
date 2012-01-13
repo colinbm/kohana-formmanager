@@ -2,7 +2,7 @@
 <?php foreach ($field['options'] as $option): ?>
 	<li>
 		<label>
-			<?php echo Form::checkbox($field['name'].'[]', $option, in_array($option, $field['value'])); ?>
+			<?php echo Form::checkbox($field['field_name'].'[]', $option, in_array($option, $field['value'])); ?>
 			<span><?php echo $option; ?></span>
 		</label>
 	</li>
