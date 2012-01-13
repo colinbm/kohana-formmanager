@@ -24,13 +24,14 @@ class Form_Login extends FormManager {
 	
 	protected function setup() {
 		$this->add_field('username');
-		$this->add_field('password');
+		$this->add_field('password', array('display_as' => 'password');
+		$this->rule('username', 'not_empty');
+		$this->rule('password', 'not_empty');
 	}
 	
 	public function submit() {
-		if (!$this->is_submitted()) {
-			return false;
-		}
+		$success = parent::submit();
+		if (!success) return false;
 		
 		$values = $this->get_input();
 
