@@ -3,6 +3,8 @@ Kohana FormManager
 
 This module allows you to create reusable forms that are self contained. You can tie it to a ORM model, or roll your own.
 
+The bundled view templates are marked up to work out of the box with the [Bootstrap CSS toolkit from Twitter](http://twitter.github.com/bootstrap), but you can override these and use your own markup as needed.
+
 Examples
 --------
 
