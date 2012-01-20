@@ -85,9 +85,36 @@ abstract class FormManager_Core_FormManager
 				$this->fields[$key]['value'] = $this->object->$key;
 			}
 
+			if ($column = $this->object->created_column()) {
+				$this->remove_field($column['column']);
+			}
+
+			if ($column = $this->object->updated_column()) {
+				$this->remove_field($column['column']);
+			}
+
 		}
 
 		$this->setup();
+		
+		// Relations.
+
+		if ($belongs_to = $this->object->belongs_to()) {
+			foreach ($belongs_to as $alias => $config) {
+				$model = isset($config['model']) ? $config['model'] : $alias;
+				$foreign_key = isset($config['foreign_key']) ? $config['foreign_key'] : $model . '_id';
+
+				if (isset($this->fields[$foreign_key])) {
+					$model = ORM::factory($model);
+					$this->fields[$foreign_key]['options'] = array();
+					foreach($model->find_all() as $row) {
+						$this->fields[$foreign_key]['options'][$row->{$model->primary_key()}] = isset($this->fields[$foreign_key]['foreign_name']) ? $row->{$this->fields[$foreign_key]['foreign_name']} : $row->{$model->primary_key()};
+					}
+					$this->fields[$foreign_key] = $this->set_field_value($this->fields[$foreign_key], 'display_as', 'select');
+					$this->fields[$foreign_key]['dont_reindex_options'] = true;
+				}
+			}
+		}
 
 		foreach($this->fields as $key => $field) {
 			$this->fields[$key] = $this->configure_field($field);
@@ -134,6 +161,7 @@ abstract class FormManager_Core_FormManager
 				if (isset($this->fields[$key]['data_type']) && $this->fields[$key]['data_type'] == 'set') {
 					$this->object->$key = implode(',', $value);
 				} else {
+					if ($value === '' && $this->fields[$key]['is_nullable']) $value = null;
 					$this->object->$key = $value;
 				}
 			}
@@ -358,12 +386,16 @@ abstract class FormManager_Core_FormManager
 		$field = $this->set_field_value($field, 'help', '');
 		
 		if (isset($field['options'])) {
-			$options = array();
-			if ($field['is_nullable']) $options[''] = '';
-			foreach ($field['options'] as $option) {
-				$options[$option] = $option;
+			if (isset($field['dont_reindex_options'])) {
+				if ($field['is_nullable']) $field['options'] = array('' => '') + $field['options'];
+			} else {
+				$options = array();
+				if ($field['is_nullable']) $options[''] = '';
+				foreach ($field['options'] as $option) {
+					$options[$option] = $option;
+				}
+				$field['options'] = $options;
 			}
-			$field['options'] = $options;
 		}
 
 		if ($field['name'] == $this->primary_key) {
