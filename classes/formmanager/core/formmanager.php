@@ -99,7 +99,7 @@ abstract class FormManager_Core_FormManager
 		
 		// Relations.
 
-		if ($belongs_to = $this->object->belongs_to()) {
+		if (isset($this->object) && $belongs_to = $this->object->belongs_to()) {
 			foreach ($belongs_to as $alias => $config) {
 				$model = isset($config['model']) ? $config['model'] : $alias;
 				$foreign_key = isset($config['foreign_key']) ? $config['foreign_key'] : $model . '_id';
