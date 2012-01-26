@@ -91,7 +91,7 @@ class Form_Profile extends FormManager {
 		$success = parent::submit();
 
 		if ($success) {
-			$this->save();
+			$this->save_object();
 		}
 
 		return $success;
@@ -101,4 +101,4 @@ class Form_Profile extends FormManager {
 }
 ```
 
-Note; the FormManager class does not automatically call ->save() during ->submit().
+Note; the FormManager class does not automatically call ->save_object() during ->submit().

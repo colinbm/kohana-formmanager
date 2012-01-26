@@ -98,7 +98,7 @@ abstract class FormManager_Core_FormManager
 		$this->setup();
 		
 		// Relations.
-
+		
 		if (isset($this->object) && $belongs_to = $this->object->belongs_to()) {
 			foreach ($belongs_to as $alias => $config) {
 				$model = isset($config['model']) ? $config['model'] : $alias;
@@ -110,14 +110,15 @@ abstract class FormManager_Core_FormManager
 					foreach($model->find_all() as $row) {
 						$this->fields[$foreign_key]['options'][$row->{$model->primary_key()}] = isset($this->fields[$foreign_key]['foreign_name']) ? $row->{$this->fields[$foreign_key]['foreign_name']} : $row->{$model->primary_key()};
 					}
-					$this->fields[$foreign_key] = $this->set_field_value($this->fields[$foreign_key], 'display_as', 'select');
-					$this->fields[$foreign_key]['dont_reindex_options'] = true;
+					$this->set_field_value($foreign_key, 'display_as', 'select');
+					$this->set_field_value($foreign_key, 'dont_reindex_options', true);
+					#$this->fields[$foreign_key]['dont_reindex_options'] = true;
 				}
 			}
 		}
 
 		foreach($this->fields as $key => $field) {
-			$this->fields[$key] = $this->configure_field($field);
+			$this->configure_field($key);
 		}
 
 		if ($this->method == 'post') {
@@ -223,6 +224,18 @@ abstract class FormManager_Core_FormManager
 			unset($this->fields[$name]);
 		}
 	}
+
+	/**
+	 * Remove a field from display in the form
+	 * but don't stop it being written to the
+	 * model. It'll need set elsewhere if it's
+	 * not nullable.
+	 *
+	 * @param string $name Field name
+	 */
+	public function disable_field($name) {
+		$this->set_field_value($name, 'disabled', true, true);
+	}
 	
 	/**
 	 * Move a field
@@ -251,8 +264,15 @@ abstract class FormManager_Core_FormManager
 		} else {
 			$view = View::factory('formmanager/form');
 		}
-		
+
 		$view->form = $this;
+	
+		foreach($view->form->fields as $key => $field) {
+			if ($field['disabled']) {
+				unset($view->form->fields[$key]);
+			}
+		}
+
 		return $view->render();
 	}
 	
@@ -360,79 +380,88 @@ abstract class FormManager_Core_FormManager
 	 * @return array $field
 	 */
 	protected function configure_field($field) {
-		if (!isset($field['name'])) $field['name'] = $field['column_name'];
-		if (!isset($field['field_name'])) $field['field_name'] = $this->container . '[' . $field['name'] . ']';
-		if (!isset($field['field_id'])) $field['field_id'] = trim(str_replace(array('[', ']'), '_', $field['field_name']), '_');
+		$this->set_field_value($field, 'disabled', false);
 
+		$this->set_field_value($field, 'name', $field);
+		$this->set_field_value($field, 'field_name', $this->container . '[' . $this->fields[$field]['name'] . ']');
+		$this->set_field_value($field, 'field_id', trim(str_replace(array('[', ']'), '_', $this->fields[$field]['field_name']), '_'));
 
-		if (!isset($field['value'])) $field['value'] = '';
+		$this->set_field_value($field, 'value', '');
 
-		if (!isset($field['label']) || !$field['label']) $field['label'] = ucwords(str_replace('_', ' ', $field['name']));
-		$field = $this->set_field_value($field, 'error', false);
-		$field = $this->set_field_value($field, 'error_text','');
+		#if (!isset($this->fields[$field]['label']) || !$this->fields[$field]['label']) $this->fields[$field]['label'] = ucwords(str_replace('_', ' ', $this->fields[$field]['name']));
+		$this->set_field_value($field, 'label', ucwords(str_replace('_', ' ', $this->fields[$field]['name'])));
 
-		$field['attributes'] = array('id' => $field['field_id']);
+		$this->set_field_value($field, 'error', false);
+		$this->set_field_value($field, 'error_text','');
 
-		if (isset($field['comment'])) {
-			$comment = explode("\n", $field['comment']);
+		$attributes = array('id' => $this->fields[$field]['field_id']);
+
+		if (isset($this->fields[$field]['comment'])) {
+			$comment = explode("\n", $this->fields[$field]['comment']);
 			foreach($comment as $line) {
 				if (false !== strpos($line, ':')) {
-					list($key, $value) = preg_split('/ *: */', $line, 2);
-					$field = $this->set_field_value($field, trim($key), trim($value));
+					list($field, $value) = preg_split('/ *: */', $line, 2);
+					$this->set_field_value($field, trim($field), trim($value));
 				}
 			}
 		}
 
-		$field = $this->set_field_value($field, 'help', '');
+		$this->set_field_value($field, 'help', '');
 		
-		if (isset($field['options'])) {
-			if (isset($field['dont_reindex_options'])) {
-				if ($field['is_nullable']) $field['options'] = array('' => '') + $field['options'];
+		if (isset($this->fields[$field]['options'])) {
+			if (isset($this->fields[$field]['dont_reindex_options'])) {
+				if ($this->fields[$field]['is_nullable']) $this->fields[$field]['options'] = array('' => '') + $this->fields[$field]['options'];
 			} else {
 				$options = array();
-				if ($field['is_nullable']) $options[''] = '';
-				foreach ($field['options'] as $option) {
+				if ($this->fields[$field]['is_nullable']) $options[''] = '';
+				foreach ($this->fields[$field]['options'] as $option) {
 					$options[$option] = $option;
 				}
-				$field['options'] = $options;
+				$this->fields[$field]['options'] = $options;
 			}
 		}
 
-		if ($field['name'] == $this->primary_key) {
-			$field = $this->set_field_value($field, 'display_as', 'hidden');
+		if ($this->fields[$field]['name'] == $this->primary_key) {
+			$this->set_field_value($field, 'display_as', 'hidden');
 		}
 
-		elseif (isset($field['data_type']) && $field['data_type'] == 'enum') {
-			$field = $this->set_field_value($field, 'display_as', 'select');
+		elseif (isset($this->fields[$field]['data_type']) && $this->fields[$field]['data_type'] == 'enum') {
+			$this->set_field_value($field, 'display_as', 'select');
 		}
 
-		elseif (isset($field['data_type']) && $field['data_type'] == 'set') {
-			$field = $this->set_field_value($field, 'display_as', 'checkboxes');
-			$field['value'] = explode(',', $field['value']);
+		elseif (isset($this->fields[$field]['data_type']) && $this->fields[$field]['data_type'] == 'set') {
+			$this->set_field_value($field, 'display_as', 'checkboxes');
+			$this->fields[$field]['value'] = explode(',', $this->fields[$field]['value']);
 		}
 
-		elseif (isset($field['data_type']) && $field['data_type'] == 'tinyint' && $field['display'] == '1') {
-			$field = $this->set_field_value($field, 'display_as', 'bool');
+		elseif (isset($this->fields[$field]['data_type']) && $this->fields[$field]['data_type'] == 'tinyint' && $this->fields[$field]['display'] == '1') {
+			$this->set_field_value($field, 'display_as', 'bool');
 		}
 
-		elseif (isset($field['type']) && preg_match('/^(.*int|decimal|float)$/', $field['type'])) {
-			$field = $this->set_field_value($field, 'display_as', 'text');
-			$field = $this->set_field_value($field, 'input_type', 'number');
+		elseif (isset($this->fields[$field]['type']) && preg_match('/^(.*int|decimal|float)$/', $this->fields[$field]['type'])) {
+			$this->set_field_value($field, 'display_as', 'text');
+			$this->set_field_value($field, 'input_type', 'number');
+		}
+
+		elseif (isset($this->fields[$field]['data_type']) && $this->fields[$field]['data_type'] == 'text') {
+			$this->set_field_value($field, 'display_as', 'textarea');
 		}
 		
 		else {
-			$field = $this->set_field_value($field, 'display_as', 'text');
-			$field = $this->set_field_value($field, 'input_type', 'text');
-			if (isset($field['character_maximum_length'])) {
-				$field['attributes']['maxlength'] = $field['character_maximum_length'];
+			$this->set_field_value($field, 'display_as', 'text');
+			$this->set_field_value($field, 'input_type', 'text');
+			if (isset($this->fields[$field]['character_maximum_length'])) {
+				$attributes['maxlength'] = $this->fields[$field]['character_maximum_length'];
 			}
 		}
 
-		$field['required'] = $field['attributes']['required'] = isset($field['is_nullable']) && !$field['is_nullable'];
+		$required = isset($this->fields[$field]['is_nullable']) && !$this->fields[$field]['is_nullable'];
+		$this->set_field_value($field, 'required', $required);
+		# $attributes['required'] = $required; // this triggers browser behaviour, which doesn't seem quite ready yet.
+
+		$this->set_field_value($field, 'attributes', $attributes);
 
 
-
-		return $field;
 
 	}
 
@@ -443,11 +472,10 @@ abstract class FormManager_Core_FormManager
 	 * @param string $key
 	 * @param mixed $value
 	 * @param bool $override
-	 * @return type array
 	 */
 	protected function set_field_value($field, $key, $value, $override=false) {
-		if (!isset($field[$key]) or $override) $field[$key] = $value;
-		return $field;
+		if (!isset($this->fields[$field])) return false;
+		if (!isset($this->fields[$field][$key]) or $override) $this->fields[$field][$key] = $value;
 	}
 
 
