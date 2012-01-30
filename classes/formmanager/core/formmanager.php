@@ -356,7 +356,13 @@ abstract class FormManager_Core_FormManager
 	 */
 	public function get_input() {
 		if ($this->is_submitted()) {
-			return $this->expected_input[$this->container];
+			$input = $this->expected_input[$this->container];
+			foreach($this->fields as $key => $field) {
+				if ($field['display_as'] == 'bool' && !isset($input[$key])) {
+					$input[$key] = 0;
+				}
+			}
+			return $input;
 		}
 		return array();
 	}
@@ -443,7 +449,7 @@ abstract class FormManager_Core_FormManager
 			$this->set_field_value($field, 'input_type', 'number');
 		}
 
-		elseif (isset($this->fields[$field]['data_type']) && $this->fields[$field]['data_type'] == 'text') {
+		elseif (isset($this->fields[$field]['data_type']) && preg_match('/.*text$/', $this->fields[$field]['data_type'])) {
 			$this->set_field_value($field, 'display_as', 'textarea');
 		}
 		
