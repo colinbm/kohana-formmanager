@@ -33,6 +33,8 @@ abstract class FormManager_Core_FormManager
 	 * Exclude these fields from the form (only used if $include_fields is empty)
 	 */
 	protected $exclude_fields = array();
+
+	public $fieldsets = array();
 	
 	protected function setup() {}
 
@@ -127,6 +129,13 @@ abstract class FormManager_Core_FormManager
 			$this->expected_input = $_GET;
 		}
 		
+	}
+
+	public function add_fieldset($legend, $fields) {
+		$this->fieldsets[] = array(
+			'legend' => $legend,
+			'fields' => $fields
+		);
 	}
 	
 	/**
@@ -273,7 +282,30 @@ abstract class FormManager_Core_FormManager
 			}
 		}
 
+		
+
+		$this->process_fieldsets();
+		
+
 		return $view->render();
+	}
+
+	protected function process_fieldsets($remaining_field_names=null) {
+		if (is_null($remaining_field_names)) $remaining_field_names = array_keys($this->fields);
+
+		foreach ($this->fieldsets as &$fieldset) {
+			foreach ($fieldset['fields'] as &$field) {
+				if (is_string($field) && isset($this->fields[$field])) {
+					unset($remaining_field_names[array_search($field, $remaining_field_names)]);
+					$field = $this->fields[$field];
+				}
+			}
+		}
+
+		if ($remaining_field_names && $this->fieldsets) {
+			$this->add_fieldset(__('Other'), $remaining_field_names);
+			$this->process_fieldsets($remaining_field_names);
+		}
 	}
 	
 	/**
