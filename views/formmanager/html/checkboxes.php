@@ -1,10 +1,7 @@
-<ul class="inputs-list">
 <?php foreach ($field['options'] as $option): ?>
-	<li>
-		<label>
+		<label class="checkbox">
 			<?php echo Form::checkbox($field['field_name'].'[]', $option, in_array($option, $field['value'])); ?>
-			<span><?php echo $option; ?></span>
+			<?php echo $option; ?>
 		</label>
-	</li>
 <?php endforeach; ?>
-</ul>
+
