@@ -6,7 +6,7 @@
 		<?php echo View::factory('formmanager/html/fields', array('fields' => $form->fields))->render(); ?>
 	<?php endif; ?>
 
-	<div class="actions">
+	<div class="form-actions">
 		<input type="submit" class="btn btn-primary" value="<?php echo $form->submit_text; ?>" />
     </div>
 
