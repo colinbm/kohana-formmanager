@@ -50,7 +50,7 @@ abstract class FormManager_Core_FormManager
 
 		$form_name = preg_replace('/^form_/', '', strtolower(get_class($this)));
 
-		$this->custom_view = 'formmanager/' . $form_name;
+		if (!$this->custom_view) $this->custom_view = 'formmanager/' . $form_name;
 
 		if ($parent_container) {
 			$this->container = $parent_container . '[' . $form_name . ']';
