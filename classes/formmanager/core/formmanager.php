@@ -46,7 +46,7 @@ abstract class FormManager_Core_FormManager
 	 **/
 	public function __construct($id = null, $parent_container = null) {
 		
-		$this->submit_text = I18n::get('Save changes');
+		if (!$this->submit_text) $this->submit_text = I18n::get('Save changes');
 
 		$form_name = preg_replace('/^form_/', '', strtolower(get_class($this)));
 
