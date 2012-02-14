@@ -317,7 +317,7 @@ abstract class FormManager_Core_FormManager
 			$this->process_fieldsets($remaining_field_names);
 		}
 		
-		if (!$this->fieldsets[count($this->fieldsets)-1]['fields']) {
+		if (isset($this->fieldsets[count($this->fieldsets)-1]) && !$this->fieldsets[count($this->fieldsets)-1]['fields']) {
 			unset($this->fieldsets[count($this->fieldsets)-1]);
 		}
 
