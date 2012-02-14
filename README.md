@@ -102,3 +102,9 @@ class Form_Profile extends FormManager {
 ```
 
 Note; the FormManager class does not automatically call ->save_object() during ->submit().
+
+To Do
+-----
+
+* Refactor or rewrite. I've tacked things on as I've gone and it's getting a bit unwieldy. Need to get all the additional features in there in a more logical form.
+* Documentation!

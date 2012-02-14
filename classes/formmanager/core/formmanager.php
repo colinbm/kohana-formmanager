@@ -35,7 +35,11 @@ abstract class FormManager_Core_FormManager
 	protected $exclude_fields = array();
 
 	public $fieldsets = array();
+
+	protected $form_name;
 	
+	protected $uploads;
+
 	protected function setup() {}
 
 	/**
@@ -45,18 +49,21 @@ abstract class FormManager_Core_FormManager
 	 * @return void
 	 **/
 	public function __construct($id = null, $parent_container = null) {
-		
+
 		if (!$this->submit_text) $this->submit_text = I18n::get('Save changes');
 
-		$form_name = preg_replace('/^form_/', '', strtolower(get_class($this)));
+		$this->form_name = preg_replace('/^form_/', '', strtolower(get_class($this)));
 
-		if (!$this->custom_view) $this->custom_view = 'formmanager/' . $form_name;
+		if (!$this->custom_view) $this->custom_view = 'formmanager/' . $this->form_name;
 
 		if ($parent_container) {
-			$this->container = $parent_container . '[' . $form_name . ']';
+			$this->container = $parent_container . '[' . $this->form_name . ']';
 		} else {
-			$this->container = $form_name;
+			$this->container = $this->form_name;
 		}
+
+		$this->uploads = Kohana::$config->load('formmanager.uploads')
+		               . ($this->model ? $this->model : $this->form_name) . '/';
 
 		if ($this->model) {
 
@@ -294,10 +301,13 @@ abstract class FormManager_Core_FormManager
 		if (is_null($remaining_field_names)) $remaining_field_names = array_keys($this->fields);
 
 		foreach ($this->fieldsets as &$fieldset) {
-			foreach ($fieldset['fields'] as &$field) {
+			foreach ($fieldset['fields'] as $i => &$field) {
 				if (is_string($field) && isset($this->fields[$field])) {
 					unset($remaining_field_names[array_search($field, $remaining_field_names)]);
 					$field = $this->fields[$field];
+				}
+				if ($field['display_as'] == 'hidden') {
+					unset($fieldset['fields'][$i]);
 				}
 			}
 		}
@@ -306,6 +316,11 @@ abstract class FormManager_Core_FormManager
 			$this->add_fieldset(__('Other'), $remaining_field_names);
 			$this->process_fieldsets($remaining_field_names);
 		}
+		
+		if (!$this->fieldsets[count($this->fieldsets)-1]['fields']) {
+			unset($this->fieldsets[count($this->fieldsets)-1]);
+		}
+
 	}
 	
 	/**
@@ -324,6 +339,12 @@ abstract class FormManager_Core_FormManager
 		// If we leave in a blank primary key, then ORM will not set it.
 		if (isset($values[$this->primary_key]) && $values[$this->primary_key] == '') {
 			$this->remove_field($this->primary_key);
+		}
+
+		foreach($this->fields as $field) {
+			if ($field['display_as'] == 'file') {
+				$this->rule($field['column_name'], 'upload::valid');
+			}
 		}
 
 		$this->set_values($values);
@@ -406,7 +427,31 @@ abstract class FormManager_Core_FormManager
 	 */
 	public function save_object() {
 		if (!$this->object) return false;
+
+		foreach($this->fields as $field) {
+			if ($field['display_as'] == 'file') {
+				if (!$this->object->id) {
+					$this->object->save();
+				}
+				if (!is_dir($this->uploads . $this->object->id)) mkdir($this->uploads . $this->object->id, 0755, true);
+				$file = $this->unbork_file($field);
+				$saved_path = Upload::save($file, preg_replace('/^.*?(\..*|$)/', $field['column_name'] . '$1', $file['name']), $this->uploads . $this->object->id . '/');
+				$saved_path = substr($saved_path, strlen(DOCROOT));
+				$this->set_value($field['column_name'], $saved_path);
+			}
+		}
+
 		return $this->object->save();
+	}
+
+	protected function unbork_file($field) {
+		return array(
+			'name'     => $_FILES[$this->form_name]['name'][$field['column_name']],
+			'type'     => $_FILES[$this->form_name]['type'][$field['column_name']],
+			'tmp_name' => $_FILES[$this->form_name]['tmp_name'][$field['column_name']],
+			'error'    => $_FILES[$this->form_name]['error'][$field['column_name']],
+			'size'     => $_FILES[$this->form_name]['size'][$field['column_name']],
+		);
 	}
 
 
