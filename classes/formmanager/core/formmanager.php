@@ -13,6 +13,23 @@ abstract class FormManager_Core_FormManager
 	public $action = '';
 	protected $expected_input;
 
+    /**
+     * Any buttons required for this form
+     * @var array
+     */
+    public $buttons    = array();
+    /**
+     * Any HTML attributes we want to add to the form.
+     * @var array
+     */
+    public $attributes = array();
+
+    /**
+     * Any relationships we wish to exclude
+     * @var array
+     */
+    protected $exclude_relationship = array();
+
 	public $submit_text;
 
 	const SUBMIT_STATUS_FAIL = 'fail';
@@ -45,98 +62,171 @@ abstract class FormManager_Core_FormManager
 	/**
 	 * Constructor
 	 *
-	 * @param int $id Primary key of the model. Ignored unless $this->model is set. 
-	 * @return void
+	 * @param int $id Primary key of the model. Ignored unless $this->model is set.
+     * @param string $parent_container The parent container for the form elements
 	 **/
 	public function __construct($id = null, $parent_container = null) {
+        $this->_init($parent_container);
+        $this->_load_model($id);
 
-		if (!$this->submit_text) $this->submit_text = I18n::get('Save changes');
+        $this->setup();
 
-		$this->form_name = preg_replace('/^form_/', '', strtolower(get_class($this)));
-
-		if (!$this->custom_view) $this->custom_view = 'formmanager/' . $this->form_name;
-
-		if ($parent_container) {
-			$this->container = $parent_container . '[' . $this->form_name . ']';
-		} else {
-			$this->container = $this->form_name;
-		}
-
-		$this->uploads = Kohana::$config->load('formmanager.uploads')
-		               . ($this->model ? $this->model : $this->form_name) . '/';
-
-		if ($this->model) {
-
-			$this->object = ORM::factory($this->model, $id);
-
-			$table_columns = $this->object->table_columns();
-			foreach ($table_columns as $table_column) {
-				if ($table_column['key'] == 'PRI') {
-					$this->primary_key = $table_column['column_name'];
-				}
-				$this->add_field($table_column['column_name'], $table_column);
-			}
-			if ($this->include_fields) {
-				foreach ($this->fields as $key => $field) {
-					if (!in_array($key, $this->include_fields)) {
-						unset($this->fields[$key]);
-					}
-				}
-			} else if ($this->exclude_fields) {
-				foreach ($this->fields as $key => $field) {
-					if (in_array($key, $this->exclude_fields)) {
-						unset($this->fields[$key]);
-					}
-				}
-			}
-
-			foreach ($this->fields as $key => $field) {
-				$this->fields[$key]['value'] = $this->object->$key;
-			}
-
-			if ($column = $this->object->created_column()) {
-				$this->remove_field($column['column']);
-			}
-
-			if ($column = $this->object->updated_column()) {
-				$this->remove_field($column['column']);
-			}
-
-		}
-
-		$this->setup();
-		
-		// Relations.
-		
-		if (isset($this->object) && $belongs_to = $this->object->belongs_to()) {
-			foreach ($belongs_to as $alias => $config) {
-				$model = isset($config['model']) ? $config['model'] : $alias;
-				$foreign_key = isset($config['foreign_key']) ? $config['foreign_key'] : $model . '_id';
-
-				if (isset($this->fields[$foreign_key])) {
-					$model = ORM::factory($model);
-					$this->fields[$foreign_key]['options'] = array();
-					foreach($model->find_all() as $row) {
-						$this->fields[$foreign_key]['options'][$row->{$model->primary_key()}] = isset($this->fields[$foreign_key]['foreign_name']) ? $row->{$this->fields[$foreign_key]['foreign_name']} : $row->{$model->primary_key()};
-					}
-					$this->set_field_value($foreign_key, 'display_as', 'select');
-					$this->set_field_value($foreign_key, 'dont_reindex_options', true);
-					#$this->fields[$foreign_key]['dont_reindex_options'] = true;
-				}
-			}
-		}
-
-		foreach($this->fields as $key => $field) {
-			$this->configure_field($key);
-		}
-
-		if ($this->method == 'post') {
-			$this->expected_input = $_POST;
-		} elseif ($this->method == 'get') {
-			$this->expected_input = $_GET;
-		}
-		
+        $this->_load_relationships();
+        $this->_configure_fields();
+        $this->_load_input_data();
 	}
+
+    /**
+     * Set up any relationships for the current form. This method should be overloaded if there are any
+     * custom relational constraints required for the current form.
+     *
+     * @param string $model The name of the Model to be loaded
+     * @return ORM
+     */
+    protected function setup_relationship($model) {
+        return ORM::factory($model);
+    }
+
+    /**
+     * Setup the form container and load the custom view, if one exists.
+     *
+     * @param string $parent_container The name of the parent container for the form elements
+     * @return void
+     */
+    private function _init($parent_container) {
+        // get the name of our form, first
+        $form_name = preg_replace('/^form_/', '', strtolower(get_class($this)));
+
+        // set the custom view, if there isn't one
+        if( empty($this->custom_view)) {
+            $this->custom_view = 'formmanager/' . $form_name;
+        }
+
+        // set up any wrapping containers for this form
+        if ($parent_container) {
+            $this->container = $parent_container . '[' . $form_name . ']';
+        } else {
+            $this->container = $form_name;
+        }
+    }
+
+    /**
+     * Load the model this form will be built on top of.
+     *
+     * @param null $id
+     * @return void
+     */
+    private function _load_model($id = NULL) {
+        if( is_null($id) ) return;
+
+        // set up the model, if one is either specified or passed in
+        if ($this->model OR $id instanceof Model) {
+
+            // if $id is not and instance of Model, load the model via factory, passing in $id
+            if( ! ($id instanceof Model) ) {
+                $this->object = ORM::factory($this->model, $id);
+            }
+            // otherwise, just assign the model instance to our object
+            else {
+                $this->object = $id;
+            }
+
+
+            $table_columns = $this->object->table_columns();
+            foreach ($table_columns as $table_column) {
+                if ($table_column['key'] == 'PRI') {
+                    $this->primary_key = $table_column['column_name'];
+                }
+                $this->add_field($table_column['column_name'], $table_column);
+            }
+
+            // handle any inclusions or exclusions
+            if ($this->include_fields) {
+                foreach ($this->fields as $key => $field) {
+                    if (!in_array($key, $this->include_fields)) {
+                        unset($this->fields[$key]);
+                    }
+                }
+            } else if ($this->exclude_fields) {
+                foreach ($this->fields as $key => $field) {
+                    if (in_array($key, $this->exclude_fields)) {
+                        unset($this->fields[$key]);
+                    }
+                }
+            }
+
+            // assign all field values
+            foreach ($this->fields as $key => $field) {
+                $this->fields[$key]['value'] = $this->object->$key;
+            }
+
+            // if the object has a created column, throw it away
+            if ($column = $this->object->created_column()) {
+                $this->remove_field($column['column']);
+            }
+
+            // if the object has an updated column, throw it away
+            if ($column = $this->object->updated_column()) {
+                $this->remove_field($column['column']);
+            }
+        }
+    }
+
+    /**
+     * Load any models that "belong to" the model this form is driven by
+     */
+    private function _load_relationships() {
+        // check for any relationships we need to load with the object
+        if (isset($this->object) && $belongs_to = $this->object->belongs_to()) {
+
+            // iterate over all related objects that "belong" to our model
+            foreach ($belongs_to as $alias => $config) {
+                // if we've explicitly excluded this relationship from the form, move on...
+                if( isset($this->exclude_relationship[$alias]) ) continue;
+
+                // assign the model name and foreign key
+                $model = isset($config['model']) ? $config['model'] : $alias;
+                $foreign_key = isset($config['foreign_key']) ? $config['foreign_key'] : $model . '_id';
+
+                // if our foreign key is found in the fields list
+                if (isset($this->fields[$foreign_key])) {
+                    // set up the relationship
+                    $model = $this->setup_relationship($model);
+
+                    // fetch all available options for this relationship
+                    // and make sure the relationship is displayed appropriately
+                    $this->fields[$foreign_key]['options'] = array();
+                    foreach ($model->find_all() as $row) {
+                        $this->fields[$foreign_key]['options'][$row->{$model->primary_key()}] = isset($this->fields[$foreign_key]['foreign_name']) ?
+                            $row->{$this->fields[$foreign_key]['foreign_name']} :
+                            $row->{$model->primary_key()};
+                    }
+                    $this->set_field_value($foreign_key, 'display_as', 'select');
+                    $this->set_field_value($foreign_key, 'dont_reindex_options', true);
+                }
+            }
+        }
+    }
+
+    /**
+     * Configure all the form fields, as per, setup()
+     */
+    private function _configure_fields() {
+        foreach ($this->fields as $key => $field) {
+            $this->configure_field($key);
+        }
+    }
+
+    /**
+     * Load any input data received from a form submission, or Query string
+     */
+    private function _load_input_data() {
+        if ($this->method == 'post') {
+            $this->expected_input = $_POST;
+        } elseif ($this->method == 'get') {
+            $this->expected_input = $_GET;
+        }
+    }
 
 	public function add_fieldset($legend, $fields) {
 		$this->fieldsets[] = array(
@@ -208,10 +298,8 @@ abstract class FormManager_Core_FormManager
 	 * @param string $relative The field that $position is relative to (for before/after)
 	 * @return void
 	 **/
-	public function add_field($name, $spec = array(), $position = null, $relative = null) {
+	public function add_field($name, $spec = array(), $position = 'end', $relative = null) {
 		if (!isset($spec['name'])) $spec['name'] = $name;
-
-		if (!$position) { $position = 'end'; }
 
 		$insertion_point = count($this->fields);
 		if ($position == 'start') {
@@ -275,6 +363,25 @@ abstract class FormManager_Core_FormManager
 	 * @return string
 	 **/
 	public function render() {
+        // ensure we have at least one button assigned, if none are assigned in the class
+        if( empty($this->buttons) ) {
+            $this->add_button('Submit', NULL, 'submit', array('class' => 'btn btn-primary'));
+        }
+
+        // set the defaults styling for the form, if it hasn't been defined
+        if( empty($this->attributes) ) {
+            $this->attributes = array(
+                'method' => ! empty($this->method) ? $this->method : 'post',
+                'enctype' => 'multipart/form-data',
+                'class' => 'form form-horizontal'
+            );
+        }
+
+        // set the action of the form, if it hasn't been defined already
+        if( empty($this->action) ) {
+            $this->action = Request::current()->uri();
+        }
+
 		if (Kohana::find_file('views', $this->custom_view)) {
 			$view = View::factory($this->custom_view);
 		} else {
@@ -289,13 +396,41 @@ abstract class FormManager_Core_FormManager
 			}
 		}
 
-		
-
 		$this->process_fieldsets();
-		
 
 		return $view->render();
 	}
+
+    /**
+     * This allows us to simply echo the form to the screen, much like you can a View
+     *
+     * @return string The rendered form
+     */
+    public function __toString() {
+        return (string) $this->render();
+    }
+
+    /**
+     * Add a button to the form.
+     *
+     * @param $label
+     * @param null $name
+     * @param string $type
+     * @param array $attributes
+     */
+    public function add_button($label, $name = NULL, $type = 'submit', $attributes = array()) {
+        if( is_null($name) ) {
+            $name = preg_replace('/[^a-z]', '', str_replace(' ', '_',strtolower($label)));
+        }
+
+        $attributes['type'] = $type;
+
+        $this->buttons[] = array(
+            'name' => "{$this->container}[{$name}]",
+            'text' => $label,
+            'attributes' => $attributes
+        );
+    }
 
 	protected function process_fieldsets($remaining_field_names=null) {
 		if (is_null($remaining_field_names)) $remaining_field_names = array_keys($this->fields);
