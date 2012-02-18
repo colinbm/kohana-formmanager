@@ -1,4 +1,4 @@
-<form action="<?php echo $form->action?>" method="<?php echo $form->method?>" enctype="multipart/form-data" class="form-horizontal">
+<?php echo Form::open($form->action, $form->attributes); ?>
 	
 	<?php if ($form->fieldsets): ?>
 		<?php foreach ($form->fields as $field): if ($field['display_as'] == 'hidden'): ?>
@@ -9,8 +9,6 @@
 		<?php echo View::factory('formmanager/html/fields', array('fields' => $form->fields))->render(); ?>
 	<?php endif; ?>
 
-	<div class="form-actions">
-		<input type="submit" class="btn btn-primary" value="<?php echo $form->submit_text; ?>" />
-    </div>
+    <?php echo View::factory('formmanager/html/buttons', array('buttons' => $form->buttons))->render(); ?>
 
-</form>
+<?php echo Form::close(); ?>
