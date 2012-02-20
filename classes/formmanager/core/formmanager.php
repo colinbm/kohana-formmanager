@@ -420,7 +420,7 @@ abstract class FormManager_Core_FormManager
      */
     public function add_button($label, $name = NULL, $type = 'submit', $attributes = array()) {
         if( is_null($name) ) {
-            $name = preg_replace('/[^a-z]', '', str_replace(' ', '_',strtolower($label)));
+            $name = preg_replace('/[^a-z]/', '', str_replace(' ', '_',strtolower($label)));
         }
 
         $attributes['type'] = $type;
