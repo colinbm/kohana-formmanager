@@ -83,7 +83,7 @@ abstract class FormManager_Core_FormManager
      * @param string $model The name of the Model to be loaded
      * @return ORM
      */
-    protected function setup_relationship($model) {
+    protected function setup_relationship($model, $field) {
         return ORM::factory($model);
     }
 
@@ -190,7 +190,7 @@ abstract class FormManager_Core_FormManager
                 // if our foreign key is found in the fields list
                 if (isset($this->fields[$foreign_key])) {
                     // set up the relationship
-                    $model = $this->setup_relationship($model);
+                    $model = $this->setup_relationship($model, $this->fields[$foreign_key]['name']);
 
                     // fetch all available options for this relationship
                     // and make sure the relationship is displayed appropriately
