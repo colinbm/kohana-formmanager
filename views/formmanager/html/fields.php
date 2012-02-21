@@ -12,4 +12,4 @@
 		echo View::factory('formmanager/html/field_close', $data)->render();
 	}
 	?>
-<? endforeach; ?>
+<?php endforeach; ?>
