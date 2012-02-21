@@ -1,6 +1,11 @@
-<?php foreach ($field['options'] as $option): ?>
+<?php foreach ($field['options'] as $option_key => $option): ?>
 		<label class="checkbox">
-			<?php echo Form::checkbox($field['field_name'].'[]', $option, in_array($option, $field['value'])); ?>
+			<input 
+				type="checkbox" 
+				name="<?php echo $field['field_name']; ?>[]" 
+				value="<?php echo $option_key; ?>" 
+				<?php if (in_array($option_key, $field['value'])): ?>checked="checked"<? endif; ?>
+			/> 
 			<?php echo $option; ?>
 		</label>
 <?php endforeach; ?>

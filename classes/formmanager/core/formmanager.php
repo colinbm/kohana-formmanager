@@ -69,9 +69,12 @@ abstract class FormManager_Core_FormManager
         $this->_init($parent_container);
         $this->_load_model($id);
 
+		$this->_preload_has_many();
+		
         $this->setup();
 
-        $this->_load_relationships();
+        $this->_load_belongs_to();
+		$this->_load_has_many();
         $this->_configure_fields();
         $this->_load_input_data();
 	}
@@ -95,18 +98,18 @@ abstract class FormManager_Core_FormManager
      */
     private function _init($parent_container) {
         // get the name of our form, first
-        $form_name = preg_replace('/^form_/', '', strtolower(get_class($this)));
+        $this->form_name = preg_replace('/^form_/', '', strtolower(get_class($this)));
 
         // set the custom view, if there isn't one
         if( empty($this->custom_view)) {
-            $this->custom_view = 'formmanager/' . $form_name;
+            $this->custom_view = 'formmanager/' . $this->form_name;
         }
 
         // set up any wrapping containers for this form
         if ($parent_container) {
-            $this->container = $parent_container . '[' . $form_name . ']';
+            $this->container = $parent_container . '[' . $this->form_name . ']';
         } else {
-            $this->container = $form_name;
+            $this->container = $this->form_name;
         }
     }
 
@@ -174,7 +177,7 @@ abstract class FormManager_Core_FormManager
     /**
      * Load any models that "belong to" the model this form is driven by
      */
-    private function _load_relationships() {
+    private function _load_belongs_to() {
         // check for any relationships we need to load with the object
         if (isset($this->object) && $belongs_to = $this->object->belongs_to()) {
 
@@ -206,6 +209,53 @@ abstract class FormManager_Core_FormManager
             }
         }
     }
+	
+	private function _preload_has_many() {
+		// check for any relationships we need to load with the object
+		if (isset($this->object) && $has_many = $this->object->has_many()) {
+			foreach ($has_many as $alias => $config) {
+				if ($config['through']) {
+					$this->add_field($alias, array(
+						'name'       => $alias,
+						'relation'   => 'has_many',
+						'display_as' => 'checkboxes',
+						'options'    => array(),
+						'is_nullable'=> false,
+						'dont_reindex_options'=> true,
+					));
+				}
+			}
+		}
+	}
+	
+	private function _load_has_many() {
+		// check for any relationships we need to load with the object
+		if (isset($this->object) && $has_many = $this->object->has_many()) {
+			foreach ($has_many as $alias => $config) {
+				if ($config['through']) {
+					
+					$model = $this->setup_relationship($config['model'], $alias);
+					$options = array();
+
+					foreach ($model->find_all() as $row) {
+						$options[$row->{$model->primary_key()}] = isset($this->fields[$alias]['foreign_name']) ?
+							$row->{$this->fields[$alias]['foreign_name']} :
+							$row->{$model->primary_key()};
+							
+					}
+					
+					$this->fields[$alias]['options'] = $options;
+					
+					$this->fields[$alias]['value'] = array();
+					$values = $this->object->{$alias};
+					foreach ($values->find_all() as $value) {
+						$this->fields[$alias]['value'][] = $value->{$values->primary_key()};
+					}
+					
+				}
+			}
+		}
+	}
 
     /**
      * Configure all the form fields, as per, setup()
@@ -575,7 +625,20 @@ abstract class FormManager_Core_FormManager
 			}
 		}
 
-		return $this->object->save();
+		$object = $this->object->save();
+		
+		foreach($this->fields as $field) {
+			if ($field['relation'] == 'has_many') {
+				$current_relations = $this->object->{$field['name']};
+				foreach ($current_relations->find_all() as $relation) {
+					$this->object->remove($field['name'], $relation->{$current_relations->primary_key()});
+				}
+				foreach($field['value'] as $value) {
+					$this->object->add($field['name'], $value);
+				}
+			}
+		}
+		
 	}
 
 	protected function unbork_file($field) {
@@ -598,7 +661,9 @@ abstract class FormManager_Core_FormManager
 	 */
 	protected function configure_field($field) {
 		$this->set_field_value($field, 'disabled', false);
-
+		
+		$this->set_field_value($field, 'relation', null);
+		
 		$this->set_field_value($field, 'name', $field);
 		$this->set_field_value($field, 'field_name', $this->container . '[' . $this->fields[$field]['name'] . ']');
 		$this->set_field_value($field, 'field_id', trim(str_replace(array('[', ']'), '_', $this->fields[$field]['field_name']), '_'));
