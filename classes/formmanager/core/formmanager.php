@@ -378,7 +378,7 @@ abstract class FormManager_Core_FormManager
 
         // set the action of the form, if it hasn't been defined already
         if( empty($this->action) ) {
-            $this->action = Request::current()->uri();
+            $this->action = Request::current()->url();
         }
 
 		if (Kohana::find_file('views', $this->custom_view)) {
