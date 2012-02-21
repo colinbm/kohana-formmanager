@@ -117,8 +117,7 @@ abstract class FormManager_Core_FormManager
      * @return void
      */
     private function _load_model($id = NULL) {
-        if( is_null($id) ) return;
-
+	
         // set up the model, if one is either specified or passed in
         if ($this->model OR $id instanceof Model) {
 
