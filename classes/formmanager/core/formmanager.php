@@ -177,7 +177,7 @@ abstract class FormManager_Core_FormManager
     /**
      * Load any models that "belong to" the model this form is driven by
      */
-    private function _load_belongs_to() {
+    protected function _load_belongs_to() {
         // check for any relationships we need to load with the object
         if (isset($this->object) && $belongs_to = $this->object->belongs_to()) {
 
@@ -210,7 +210,7 @@ abstract class FormManager_Core_FormManager
         }
     }
 	
-	private function _preload_has_many() {
+	protected function _preload_has_many() {
 		// check for any relationships we need to load with the object
 		if (isset($this->object) && $has_many = $this->object->has_many()) {
 			foreach ($has_many as $alias => $config) {
@@ -228,10 +228,13 @@ abstract class FormManager_Core_FormManager
 		}
 	}
 	
-	private function _load_has_many() {
+	protected function _load_has_many() {
 		// check for any relationships we need to load with the object
 		if (isset($this->object) && $has_many = $this->object->has_many()) {
 			foreach ($has_many as $alias => $config) {
+				// if the field's been removed in setup() then don't proceed.
+				if (!isset($this->fields[$alias])) continue;
+				
 				if ($config['through']) {
 					
 					$model = $this->setup_relationship($config['model'], $alias);
@@ -401,7 +404,7 @@ abstract class FormManager_Core_FormManager
 	public function move_field($name, $position = null, $relative = null) {
 		if (isset($this->fields[$name])) {
 			$field = $this->fields[$name];
-			unset($this->field[$name]);
+			unset($this->fields[$name]);
 			$this->add_field($name, $field, $position, $relative);
 		}
 	}
