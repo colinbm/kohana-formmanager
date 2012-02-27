@@ -695,7 +695,7 @@ abstract class FormManager_Core_FormManager
 		
 		if (isset($this->fields[$field]['options'])) {
 			if (isset($this->fields[$field]['dont_reindex_options'])) {
-				if ($this->fields[$field]['is_nullable']) $this->fields[$field]['options'] = array('' => '') + $this->fields[$field]['options'];
+				if ($this->fields[$field]['is_nullable'] || $this->is_new()) $this->fields[$field]['options'] = array('' => '') + $this->fields[$field]['options'];
 			} else {
 				$options = array();
 				if ($this->fields[$field]['is_nullable']) $options[''] = '';
@@ -761,6 +761,10 @@ abstract class FormManager_Core_FormManager
 	protected function set_field_value($field, $key, $value, $override=false) {
 		if (!isset($this->fields[$field])) return false;
 		if (!isset($this->fields[$field][$key]) or $override) $this->fields[$field][$key] = $value;
+	}
+	
+	public function is_new() {
+		return $this->object && !$this->object->id;
 	}
 
 
