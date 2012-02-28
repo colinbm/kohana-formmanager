@@ -695,7 +695,7 @@ abstract class FormManager_Core_FormManager
 		
 		if (isset($this->fields[$field]['options'])) {
 			if (isset($this->fields[$field]['dont_reindex_options'])) {
-				if ($this->fields[$field]['is_nullable'] || $this->is_new()) $this->fields[$field]['options'] = array('' => '') + $this->fields[$field]['options'];
+				if ($this->fields[$field]['is_nullable'] || ($this->is_new() && $this->fields[$field]['display_as'] == 'select')) $this->fields[$field]['options'] = array('' => '') + $this->fields[$field]['options'];
 			} else {
 				$options = array();
 				if ($this->fields[$field]['is_nullable']) $options[''] = '';
