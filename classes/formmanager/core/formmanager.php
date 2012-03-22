@@ -243,7 +243,7 @@ abstract class FormManager_Core_FormManager
 					foreach ($model->find_all() as $row) {
 						$options[$row->{$model->primary_key()}] = isset($this->fields[$alias]['foreign_name']) ?
 							$row->{$this->fields[$alias]['foreign_name']} :
-							$row->{$model->primary_key()};
+							$row;
 							
 					}
 					
