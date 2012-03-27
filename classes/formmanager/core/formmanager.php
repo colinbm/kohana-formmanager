@@ -700,7 +700,14 @@ abstract class FormManager_Core_FormManager
 				$options = array();
 				if ($this->fields[$field]['is_nullable']) $options[''] = '';
 				foreach ($this->fields[$field]['options'] as $option) {
-					$options[$option] = $option;
+						$i18id = "option_name_".$option;
+						$i18name = I18n::get($i18id);
+						if ($i18name == "" || $i18name == $i18id) {
+							$options[$option] = $option;
+						}
+						else {
+							$options[$option] = $i18name;
+						}
 				}
 				$this->fields[$field]['options'] = $options;
 			}
