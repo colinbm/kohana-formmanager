@@ -417,7 +417,8 @@ abstract class FormManager_Core_FormManager
 	public function render() {
         // ensure we have at least one button assigned, if none are assigned in the class
         if( empty($this->buttons) ) {
-            $this->add_button('Submit', NULL, 'submit', array('class' => 'btn btn-primary'));
+			if (!$this->submit_text) $this->submit_text = __('Submit');
+            $this->add_button($this->submit_text, NULL, 'submit', array('class' => 'btn btn-primary'));
         }
 
         // set the defaults styling for the form, if it hasn't been defined
