@@ -591,16 +591,20 @@ abstract class FormManager_Core_FormManager
 	}
 
 	/**
-	 * Return the submitted data, or false if not submitted
+	 * Return the submitted data, or empty array if not submitted
 	 *
 	 * @return mixed
 	 */
-	public function get_input() {
+	public function get_input($field=null) {
 		if ($this->is_submitted()) {
 			$input = $this->expected_input[$this->container];
-			foreach($this->fields as $key => $field) {
-				if ($field['display_as'] == 'bool' && !isset($input[$key])) {
-					$input[$key] = 0;
+			if ($field) {
+				return isset($input[$field]) ? $input[$field] : null;
+			} else {
+				foreach($this->fields as $key => $field) {
+					if ($field['display_as'] == 'bool' && !isset($input[$key])) {
+						$input[$key] = 0;
+					}
 				}
 			}
 			return $input;
