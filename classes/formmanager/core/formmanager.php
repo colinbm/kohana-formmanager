@@ -625,9 +625,11 @@ abstract class FormManager_Core_FormManager
 				if (!$this->object->id) {
 					$this->object->save();
 				}
-				if (!is_dir($this->uploads . $this->object->id)) mkdir($this->uploads . $this->object->id, 0755, true);
+				$directory = $this->uploads . $this->object->id . '/' . $field['column_name'] . '/';
+				if (!is_dir($directory)) mkdir($directory, 0755, true);
+				
 				$file = $this->unbork_file($field);
-				$saved_path = Upload::save($file, preg_replace('/^.*?(\..*|$)/', $field['column_name'] . '$1', $file['name']), $this->uploads . $this->object->id . '/');
+				$saved_path = Upload::save($file, preg_replace('/[^a-zA-Z0-9-.]/', '_', $file['name']), $directory);
 				$saved_path = substr($saved_path, strlen(DOCROOT)-1);
 				$this->set_value($field['column_name'], $saved_path);
 			}
