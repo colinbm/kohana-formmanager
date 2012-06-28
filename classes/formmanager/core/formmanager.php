@@ -631,6 +631,7 @@ abstract class FormManager_Core_FormManager
 				$file = $this->unbork_file($field);
 				$saved_path = Upload::save($file, preg_replace('/[^a-zA-Z0-9-.]/', '_', $file['name']), $directory);
 				$saved_path = substr($saved_path, strlen(DOCROOT)-1);
+				$saved_path = str_replace('\\', '/', $saved_path);
 				$this->set_value($field['column_name'], $saved_path);
 			}
 		}
