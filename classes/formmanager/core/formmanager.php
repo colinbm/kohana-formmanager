@@ -76,6 +76,7 @@ abstract class FormManager_Core_FormManager
         $this->_load_belongs_to();
 		$this->_load_has_many();
         $this->_configure_fields();
+        $this->_load_labels();
         $this->_load_input_data();
 	}
 
@@ -170,6 +171,17 @@ abstract class FormManager_Core_FormManager
             // if the object has an updated column, throw it away
             if ($column = $this->object->updated_column()) {
                 $this->remove_field($column['column']);
+            }
+        }
+    }
+
+    private function _load_labels() {
+        if (isset($this->object)) {
+            $labels = $this->object->labels();
+            foreach ($this->fields as $key => $value) {
+                if (isset($labels[$key])) {
+                    $this->set_field_value($key, 'label', $labels[$key], true);
+                }
             }
         }
     }
